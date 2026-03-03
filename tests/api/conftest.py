@@ -118,13 +118,13 @@ def setup_registry(monkeypatch: pytest.MonkeyPatch) -> None:
     # Build and wire the DI container with our in-memory registry engine.
     container = container_mod.init_container()
     container.registry_engine.override(reg_engine)
-    container.wire(packages=["src.api"])
+    container.wire(packages=["src.api.dependencies", "src.api.middleware"])
 
     # Patch init_container in src.main so when the lifespan fires it
     # re-wires the existing container instead of replacing it.
     def _lifespan_safe_init() -> container_mod.ApplicationContainer:
         assert container_mod._container is not None, "Container must be initialised before lifespan"
-        container_mod._container.wire(packages=["src.api"])
+        container_mod._container.wire(packages=["src.api.dependencies", "src.api.middleware"])
         return container_mod._container
 
     monkeypatch.setattr("src.main.init_container", _lifespan_safe_init)

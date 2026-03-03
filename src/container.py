@@ -63,7 +63,10 @@ class ApplicationContainer(containers.DeclarativeContainer):
     """
 
     wiring_config = containers.WiringConfiguration(
-        packages=["src.api"],
+        packages=[
+            "src.api.dependencies",
+            "src.api.middleware",
+        ],
     )
 
     config = providers.Configuration()
@@ -81,6 +84,13 @@ class ApplicationContainer(containers.DeclarativeContainer):
         SQLiteTenantRepository,
         engine=registry_engine,
     )
+
+    # ── Tenant repos (Factory) ────────────────────────────────────────────────
+    # Engine is per-request; the factory is injected as a callable into
+    # ``get_user_repo`` / ``get_membership_repo`` via ``Provide[...provider]``
+    # and called with the per-request engine at resolution time.
+    user_repo = providers.Factory(SQLiteUserRepository)
+    membership_repo = providers.Factory(SQLiteMembershipRepository)
 
     # ── Auth services (Singletons) ───────────────────────────────────────────
     # Stateless after construction — safe and efficient to share across requests.

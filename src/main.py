@@ -19,10 +19,24 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+# ── Bootstrap DI wiring ──────────────────────────────────────────────────────
+# dependency-injector only removes Provide[...] params from @inject-decorated
+# function signatures AFTER container.wire() is called on the owning module.
+# FastAPI analyses route dependency signatures at *import time* (when router
+# modules are first loaded).  We therefore wire a minimal bootstrap container
+# here — before importing routers — so FastAPI never sees raw Provide[...]
+# params and never tries to treat JWTService / Engine as Pydantic field types.
+from src.container import ApplicationContainer, init_container
+
+# ApplicationContainer() auto-wires WiringConfiguration packages (src.api.dependencies)
+# on instantiation, patching @inject signatures before routers are imported below.
+_bootstrap_container = ApplicationContainer()
+
+# Routers are imported AFTER bootstrap wiring so FastAPI analyses the already-
+# patched @inject function signatures (no Provide[...] params visible).
 from src.api.middleware.tenant_middleware import TenantMiddleware
 from src.api.routers import auth, health, pages, users
 from src.api.templates import templates
-from src.container import init_container
 from src.domain.exceptions import (
     AuthenticationError,
     DomainError,
@@ -36,7 +50,7 @@ from src.domain.exceptions import (
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     """Manage the application lifecycle."""
     container = init_container()
-    container.wire(packages=["src.api"])
+    container.wire(packages=["src.api.dependencies", "src.api.middleware"])
     yield
     container.unwire()
 

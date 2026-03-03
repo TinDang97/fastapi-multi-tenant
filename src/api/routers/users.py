@@ -21,6 +21,7 @@ from fastapi.responses import HTMLResponse
 
 from src.api.dependencies.auth import (
     get_membership_repo,
+    get_password_service,
     get_tenant_slug,
     get_user_repo,
     require_role,
@@ -28,11 +29,11 @@ from src.api.dependencies.auth import (
 from src.api.templates import templates
 from src.application.use_cases.create_user import CreateUserCommand, CreateUserUseCase
 from src.application.use_cases.list_users import ListUsersUseCase
-from src.container import get_container
 from src.domain.entities import Role, User
 from src.domain.exceptions import DuplicateEmailError
 from src.infrastructure.repositories.membership_repository import SQLiteMembershipRepository
 from src.infrastructure.repositories.user_repository import SQLiteUserRepository
+from src.infrastructure.services.password_service import PasswordService
 
 router = APIRouter(tags=["users"])
 
@@ -100,6 +101,7 @@ def create_user(
     user_repo: SQLiteUserRepository = Depends(get_user_repo),  # noqa: B008
     membership_repo: SQLiteMembershipRepository = Depends(get_membership_repo),  # noqa: B008
     tenant_slug: str = Depends(get_tenant_slug),
+    password_svc: PasswordService = Depends(get_password_service),  # noqa: B008
 ) -> HTMLResponse:
     """Create a new user with the specified role and return the table row partial.
 
@@ -130,7 +132,6 @@ def create_user(
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=f"Invalid role: {role}") from exc
 
-    password_svc = get_container().password_service()
     use_case = CreateUserUseCase(user_repo, membership_repo, password_svc)
     try:
         result = use_case.execute(

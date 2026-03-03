@@ -124,8 +124,7 @@ class TestTenantMiddlewareMissingHeader:
         repo_stub = MagicMock()
         app = _build_middleware_app(repo_stub)
 
-        with patch("src.api.middleware.tenant_middleware.get_container") as mock_gc:
-            mock_gc.return_value.tenant_repo.return_value = repo_stub
+        with patch("src.api.middleware.tenant_middleware._get_tenant_repo", return_value=repo_stub):
             client = TestClient(app, raise_server_exceptions=False)
             response = client.get("/ping")
 
@@ -136,8 +135,7 @@ class TestTenantMiddlewareMissingHeader:
         repo_stub = MagicMock()
         app = _build_middleware_app(repo_stub)
 
-        with patch("src.api.middleware.tenant_middleware.get_container") as mock_gc:
-            mock_gc.return_value.tenant_repo.return_value = repo_stub
+        with patch("src.api.middleware.tenant_middleware._get_tenant_repo", return_value=repo_stub):
             client = TestClient(app, raise_server_exceptions=False)
             client.get("/ping")
 
@@ -150,8 +148,7 @@ class TestTenantMiddlewareTenantNotFound:
         repo_stub.get_by_slug.return_value = None
         app = _build_middleware_app(repo_stub)
 
-        with patch("src.api.middleware.tenant_middleware.get_container") as mock_gc:
-            mock_gc.return_value.tenant_repo.return_value = repo_stub
+        with patch("src.api.middleware.tenant_middleware._get_tenant_repo", return_value=repo_stub):
             client = TestClient(app, raise_server_exceptions=False)
             response = client.get("/ping", headers={"X-Tenant-Slug": "ghost"})
 
@@ -163,8 +160,7 @@ class TestTenantMiddlewareTenantNotFound:
         repo_stub.get_by_slug.return_value = _make_inactive_tenant()
         app = _build_middleware_app(repo_stub)
 
-        with patch("src.api.middleware.tenant_middleware.get_container") as mock_gc:
-            mock_gc.return_value.tenant_repo.return_value = repo_stub
+        with patch("src.api.middleware.tenant_middleware._get_tenant_repo", return_value=repo_stub):
             client = TestClient(app, raise_server_exceptions=False)
             response = client.get("/ping", headers={"X-Tenant-Slug": _TENANT_SLUG})
 
@@ -177,8 +173,7 @@ class TestTenantMiddlewareSuccess:
         repo_stub.get_by_slug.return_value = _make_active_tenant()
         app = _build_middleware_app(repo_stub)
 
-        with patch("src.api.middleware.tenant_middleware.get_container") as mock_gc:
-            mock_gc.return_value.tenant_repo.return_value = repo_stub
+        with patch("src.api.middleware.tenant_middleware._get_tenant_repo", return_value=repo_stub):
             client = TestClient(app, raise_server_exceptions=False)
             response = client.get("/ping", headers={"X-Tenant-Slug": _TENANT_SLUG})
 
@@ -192,8 +187,7 @@ class TestTenantMiddlewareSuccess:
         repo_stub.get_by_slug.return_value = _make_active_tenant("beta")
         app = _build_middleware_app(repo_stub)
 
-        with patch("src.api.middleware.tenant_middleware.get_container") as mock_gc:
-            mock_gc.return_value.tenant_repo.return_value = repo_stub
+        with patch("src.api.middleware.tenant_middleware._get_tenant_repo", return_value=repo_stub):
             client = TestClient(app, raise_server_exceptions=False)
             client.get("/ping", headers={"X-Tenant-Slug": "beta"})
 
@@ -205,8 +199,7 @@ class TestTenantMiddlewareSuccess:
         repo_stub.get_by_slug.return_value = None
         app = _build_middleware_app(repo_stub)
 
-        with patch("src.api.middleware.tenant_middleware.get_container") as mock_gc:
-            mock_gc.return_value.tenant_repo.return_value = repo_stub
+        with patch("src.api.middleware.tenant_middleware._get_tenant_repo", return_value=repo_stub):
             client = TestClient(app, raise_server_exceptions=False)
             # Empty header value is technically present but empty string is falsy.
             response = client.get("/ping", headers={"X-Tenant-Slug": ""})

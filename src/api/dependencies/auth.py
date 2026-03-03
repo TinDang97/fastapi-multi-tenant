@@ -28,17 +28,18 @@ from __future__ import annotations
 
 from typing import Annotated, Any, cast
 
+from dependency_injector.wiring import Provide, inject
 from fastapi import Depends, Header, HTTPException, Request
 from sqlalchemy import Engine
 
-from src.config import get_settings
-from src.container import get_container
+from src.container import ApplicationContainer
 from src.domain.entities import ROLE_LEVEL, Role, User
 from src.domain.exceptions import AuthenticationError
 from src.infrastructure.database import create_tenant_engine
 from src.infrastructure.repositories.membership_repository import SQLiteMembershipRepository
 from src.infrastructure.repositories.user_repository import SQLiteUserRepository
 from src.infrastructure.services.jwt_service import JWTService
+from src.infrastructure.services.password_service import PasswordService
 
 
 def get_tenant_slug(request: Request) -> str:
@@ -55,7 +56,11 @@ def get_tenant_slug(request: Request) -> str:
     return cast(str, request.state.tenant_slug)
 
 
-def get_tenant_engine(tenant_slug: str = Depends(get_tenant_slug)) -> Engine:
+@inject
+def get_tenant_engine(
+    tenant_slug: str = Depends(get_tenant_slug),
+    tenant_db_dir: str = Depends(Provide[ApplicationContainer.config.tenant_db_dir]),
+) -> Engine:
     """Create a per-request SQLite engine for the active tenant's database.
 
     Each call produces a new ``Engine`` pointing at
@@ -63,49 +68,79 @@ def get_tenant_engine(tenant_slug: str = Depends(get_tenant_slug)) -> Engine:
     SQLite; the underlying connection pool is per-engine and scoped to the
     request.
 
+    ``tenant_db_dir`` is resolved from the DI container's config provider so
+    this function has no direct dependency on :func:`~src.config.get_settings`.
+
     Args:
         tenant_slug: Slug resolved from the request state.
+        tenant_db_dir: Base directory for tenant database files (from container config).
 
     Returns:
         A synchronous :class:`sqlalchemy.Engine` for the tenant database.
     """
-    settings = get_settings()
-    return create_tenant_engine(settings.tenant_db_dir, tenant_slug)
+    return create_tenant_engine(tenant_db_dir, tenant_slug)
 
 
-def get_user_repo(engine: Engine = Depends(get_tenant_engine)) -> SQLiteUserRepository:  # noqa: B008
-    """Instantiate a user repository bound to the tenant engine.
+@inject
+def get_user_repo(
+    engine: Engine = Depends(get_tenant_engine),  # noqa: B008
+    user_repo_factory=Depends(Provide[ApplicationContainer.user_repo.provider]),  # noqa: B008
+) -> SQLiteUserRepository:
+    """Resolve a user repository via the container factory, bound to the per-request engine.
+
+    ``Provide[ApplicationContainer.user_repo.provider]`` injects the ``Factory``
+    provider itself (not a resolved instance) so the per-request ``engine`` can
+    be forwarded at call time.
 
     Args:
         engine: Per-request tenant engine produced by :func:`get_tenant_engine`.
+        user_repo_factory: Container ``Factory`` provider for ``SQLiteUserRepository``.
 
     Returns:
         A :class:`~src.infrastructure.repositories.user_repository.SQLiteUserRepository`.
     """
-    return SQLiteUserRepository(engine)
+    return user_repo_factory(engine=engine)
 
 
+@inject
 def get_membership_repo(
     engine: Engine = Depends(get_tenant_engine),  # noqa: B008
+    membership_repo_factory=Depends(Provide[ApplicationContainer.membership_repo.provider]),  # noqa: B008
 ) -> SQLiteMembershipRepository:
-    """Instantiate a membership repository bound to the tenant engine.
+    """Resolve a membership repository via the container factory, bound to the per-request engine.
 
     Args:
         engine: Per-request tenant engine produced by :func:`get_tenant_engine`.
+        membership_repo_factory: Container ``Factory`` provider for ``SQLiteMembershipRepository``.
 
     Returns:
         A ``SQLiteMembershipRepository`` instance for the active tenant.
     """
-    return SQLiteMembershipRepository(engine)
+    return membership_repo_factory(engine=engine)
 
 
-def get_jwt_service() -> JWTService:
-    """Retrieve the process-wide ``JWTService`` singleton from the DI container.
+@inject
+def get_jwt_service(
+    jwt_svc: JWTService = Depends(Provide[ApplicationContainer.jwt_service]),  # noqa: B008
+) -> JWTService:
+    """Retrieve the process-wide ``JWTService`` singleton via the DI container.
 
     Returns:
         The singleton :class:`~src.infrastructure.services.jwt_service.JWTService`.
     """
-    return get_container().jwt_service()
+    return jwt_svc
+
+
+@inject
+def get_password_service(
+    pwd_svc: PasswordService = Depends(Provide[ApplicationContainer.password_service]),  # noqa: B008
+) -> PasswordService:
+    """Retrieve the process-wide ``PasswordService`` singleton via the DI container.
+
+    Returns:
+        The singleton :class:`~src.infrastructure.services.password_service.PasswordService`.
+    """
+    return pwd_svc
 
 
 async def get_current_user(

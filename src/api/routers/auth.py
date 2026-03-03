@@ -19,17 +19,18 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from src.api.dependencies.auth import (
     get_jwt_service,
     get_membership_repo,
+    get_password_service,
     get_tenant_slug,
     get_user_repo,
 )
 from src.api.schemas.auth import LoginRequest, RegisterRequest, TokenResponse
 from src.application.use_cases.login import LoginCommand, LoginUseCase
 from src.application.use_cases.register_user import RegisterUserCommand, RegisterUserUseCase
-from src.container import get_container
 from src.domain.exceptions import AuthenticationError, DuplicateEmailError
 from src.infrastructure.repositories.membership_repository import SQLiteMembershipRepository
 from src.infrastructure.repositories.user_repository import SQLiteUserRepository
 from src.infrastructure.services.jwt_service import JWTService
+from src.infrastructure.services.password_service import PasswordService
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -65,6 +66,7 @@ def register(
     user_repo: SQLiteUserRepository = Depends(get_user_repo),  # noqa: B008
     membership_repo: SQLiteMembershipRepository = Depends(get_membership_repo),  # noqa: B008
     jwt_svc: JWTService = Depends(get_jwt_service),  # noqa: B008
+    password_svc: PasswordService = Depends(get_password_service),  # noqa: B008
 ) -> TokenResponse:
     """Register a new user and return a JWT scoped to the current tenant.
 
@@ -77,6 +79,7 @@ def register(
         user_repo: Per-tenant user repository.
         membership_repo: Per-tenant membership repository.
         jwt_svc: JWT issuance service from the DI container.
+        password_svc: Password hashing service from the DI container.
 
     Returns:
         :class:`~src.api.schemas.auth.TokenResponse` containing the JWT and
@@ -85,7 +88,6 @@ def register(
     Raises:
         HTTPException 409: If the email address is already registered.
     """
-    password_svc = get_container().password_service()
     use_case = RegisterUserUseCase(user_repo, membership_repo, password_svc)
     try:
         result = use_case.execute(
@@ -110,13 +112,14 @@ def register(
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(  # noqa: PLR0913
+def login(
     request: Request,
     body: LoginRequest,
     tenant_slug: str = Depends(get_tenant_slug),
     user_repo: SQLiteUserRepository = Depends(get_user_repo),  # noqa: B008
     membership_repo: SQLiteMembershipRepository = Depends(get_membership_repo),  # noqa: B008
     jwt_svc: JWTService = Depends(get_jwt_service),  # noqa: B008
+    password_svc: PasswordService = Depends(get_password_service),  # noqa: B008
 ) -> TokenResponse:
     """Authenticate a user and return a JWT scoped to the current tenant.
 
@@ -130,6 +133,7 @@ def login(  # noqa: PLR0913
         user_repo: Per-tenant user repository.
         membership_repo: Per-tenant membership repository.
         jwt_svc: JWT issuance service from the DI container.
+        password_svc: Password hashing service from the DI container.
 
     Returns:
         :class:`~src.api.schemas.auth.TokenResponse` containing the JWT and
@@ -138,7 +142,6 @@ def login(  # noqa: PLR0913
     Raises:
         HTTPException 401: If credentials are invalid or account is inactive.
     """
-    password_svc = get_container().password_service()
     use_case = LoginUseCase(user_repo, membership_repo, password_svc, jwt_svc)
     try:
         result = use_case.execute(

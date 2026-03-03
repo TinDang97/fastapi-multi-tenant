@@ -22,7 +22,28 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.types import ASGIApp
 
-from src.container import get_container
+from dependency_injector.wiring import Provide, inject
+
+from src.container import ApplicationContainer
+from src.infrastructure.repositories.tenant_repository import SQLiteTenantRepository
+
+
+@inject
+def _get_tenant_repo(
+    repo: SQLiteTenantRepository = Provide[ApplicationContainer.tenant_repo],
+) -> SQLiteTenantRepository:
+    """Resolve a ``SQLiteTenantRepository`` from the DI container.
+
+    Called once per request inside :meth:`TenantMiddleware.dispatch` to
+    look up the incoming tenant slug in the registry database.  Using
+    ``@inject`` + ``Provide`` keeps the middleware free of direct
+    ``get_container()`` calls and makes the dependency explicit.
+
+    Returns:
+        A :class:`~src.infrastructure.repositories.tenant_repository.SQLiteTenantRepository`
+        bound to the singleton registry engine.
+    """
+    return repo
 
 
 class TenantMiddleware(BaseHTTPMiddleware):
@@ -65,7 +86,7 @@ class TenantMiddleware(BaseHTTPMiddleware):
                 status_code=400,
             )
 
-        tenant_repo = get_container().tenant_repo()
+        tenant_repo = _get_tenant_repo()
         tenant = tenant_repo.get_by_slug(slug)
         if tenant is None or not tenant.is_active:
             return JSONResponse(

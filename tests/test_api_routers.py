@@ -31,6 +31,7 @@ from src.api.dependencies.auth import (
     get_current_user,
     get_jwt_service,
     get_membership_repo,
+    get_password_service,
     get_tenant_slug,
     get_user_repo,
 )
@@ -152,6 +153,7 @@ def _build_client(
     app.dependency_overrides[get_user_repo] = lambda: _user_repo
     app.dependency_overrides[get_membership_repo] = lambda: _membership_repo
     app.dependency_overrides[get_jwt_service] = lambda: _jwt_svc
+    app.dependency_overrides[get_password_service] = lambda: FakePasswordService()
 
     if current_user is not None:
         app.dependency_overrides[get_current_user] = lambda: current_user
@@ -166,25 +168,14 @@ def _build_client(
 # ---------------------------------------------------------------------------
 
 
-class _FakeContainer:
-    def __init__(self) -> None:
-        self._password_svc = FakePasswordService()
-        self._tenant_repo = _FakeTenantRepo()
-
-    def password_service(self) -> FakePasswordService:
-        return self._password_svc
-
-    def tenant_repo(self) -> _FakeTenantRepo:
-        return self._tenant_repo
-
-
 @pytest.fixture(autouse=True)
-def _patch_container(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Patch get_container() everywhere so no real DI container is needed."""
-    fake = _FakeContainer()
-    monkeypatch.setattr("src.api.routers.auth.get_container", lambda: fake)
-    monkeypatch.setattr("src.api.routers.users.get_container", lambda: fake)
-    monkeypatch.setattr("src.api.middleware.tenant_middleware.get_container", lambda: fake)
+def _patch_tenant_repo(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Patch _get_tenant_repo in middleware so no real DI container is needed."""
+    fake_repo = _FakeTenantRepo()
+    monkeypatch.setattr(
+        "src.api.middleware.tenant_middleware._get_tenant_repo",
+        lambda: fake_repo,
+    )
 
 
 @pytest.fixture(autouse=True)
