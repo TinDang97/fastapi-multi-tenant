@@ -1,0 +1,70 @@
+[project]
+name = "fastapi-multi-tenant"
+version = "0.1.0"
+requires-python = ">=3.12"
+description = "Multi-tenant FastAPI boilerplate with schema-per-tenant isolation"
+authors = [{ name = "Tin Dang" }]
+
+dependencies = [
+    "fastapi[standard]>=0.115",
+    "sqlmodel>=0.0.22",
+    "alembic>=1.14",
+    "dependency-injector>=4.44",
+    "jinja2>=3.1",
+    "aiosqlite>=0.20",
+    "httpx>=0.27",
+    "python-multipart>=0.0.12",
+    "python-jose[cryptography]>=3.3",
+    "passlib[bcrypt]>=1.7",
+    "bcrypt>=3.2,<4",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.8",
+    "mypy>=1.13",
+    "coverage[toml]>=7",
+    "httpx>=0.27",
+    "types-passlib>=1.7.7.20260211",
+    "types-python-jose>=3.5.0.20250531",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "S", "C4", "PTH", "RUF"]
+ignore = ["S101"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S105", "S106"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["src"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["*/tests/*"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false

@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}Users &mdash; FastAPI Multi-Tenant{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>Users</h1>
+    <p class="page-header__meta text-muted">
+      Tenant:&nbsp;<code style="font-family: var(--font-mono); font-size: 0.85em;">{{ tenant_slug | default("—") }}</code>
+    </p>
+  </div>
+</div>
+
+<!-- ── User table ─────────────────────────────────────────────── -->
+<div class="table-wrapper mb-6">
+  <table id="users-table" aria-label="Tenant users">
+    <thead>
+      <tr>
+        <th scope="col">Email</th>
+        <th scope="col">Role</th>
+        <th scope="col">Status</th>
+        <th scope="col"><span class="sr-only">Actions</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for user in users %}
+        {% include "users/_row.html" %}
+      {% else %}
+        <tr>
+          <td colspan="4" class="text-center text-muted" style="padding: 2rem;">
+            No users found for this tenant.
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- ── Add user form (ADMIN / OWNER only) ─────────────────────── -->
+{% if current_user.role in ['ADMIN', 'OWNER'] %}
+<div class="card" style="max-width: 480px;">
+  <h2>Add User</h2>
+
+  <form hx-post="/users"
+        hx-target="#users-table tbody"
+        hx-swap="beforeend"
+        hx-indicator="#add-user-indicator"
+        hx-headers='{"Authorization": "Bearer {{ token | default("") }}"}'
+        hx-on::after-request="if(event.detail.successful) this.reset()">
+
+    <div class="form-group">
+      <label for="new-email">Email address</label>
+      <input
+        type="email"
+        id="new-email"
+        name="email"
+        placeholder="new-user@example.com"
+        autocomplete="off"
+        required
+        aria-required="true"
+        aria-describedby="form-error">
+    </div>
+
+    <div class="form-group">
+      <label for="new-password">Password</label>
+      <input
+        type="password"
+        id="new-password"
+        name="password"
+        placeholder="Minimum 8 characters"
+        minlength="8"
+        required
+        aria-required="true">
+    </div>
+
+    <div class="form-group">
+      <label for="new-role">Role</label>
+      <select id="new-role" name="role" required aria-required="true">
+        <option value="VIEWER">VIEWER</option>
+        <option value="MEMBER" selected>MEMBER</option>
+        {% if current_user.role == 'OWNER' %}
+          <option value="ADMIN">ADMIN</option>
+        {% endif %}
+      </select>
+      <span class="text-muted text-sm mt-1">
+        {% if current_user.role == 'OWNER' %}
+          OWNER role can only be assigned directly in the database.
+        {% else %}
+          ADMIN role can only be assigned by the tenant OWNER.
+        {% endif %}
+      </span>
+    </div>
+
+    <!-- Error feedback target -->
+    <div id="form-error" role="alert" aria-live="polite" class="feedback feedback--error mb-4"></div>
+
+    <button type="submit" class="btn btn--primary">
+      <span class="htmx-indicator" id="add-user-indicator" aria-hidden="true">&#x23F3;</span>
+      Add User
+    </button>
+  </form>
+</div>
+{% endif %}
+
+<!-- Visually hidden utility class for screen-reader-only content -->
+<style>
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+</style>
+{% endblock %}

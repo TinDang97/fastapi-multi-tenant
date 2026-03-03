@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}FastAPI Multi-Tenant{% endblock %}</title>
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+  <script src="https://unpkg.com/htmx-ext-json-enc@2.0.1/json-enc.js"></script>
+  <script>
+    // Swap content on 4xx/5xx responses so error HTML from server renders inline.
+    htmx.config.responseHandling = [
+      {code: "...", swap: true, error: false, ignoreTitle: true}
+    ];
+  </script>
+  <style>
+    /* ── Reset & base ─────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --clr-bg:         #0f1117;
+      --clr-surface:    #1a1d27;
+      --clr-border:     #2a2d3a;
+      --clr-accent:     #6366f1;
+      --clr-accent-dim: #4f52c9;
+      --clr-text:       #e2e4f0;
+      --clr-muted:      #8b8fa8;
+      --clr-danger:     #ef4444;
+      --clr-success:    #22c55e;
+      --clr-warning:    #f59e0b;
+      --radius:         6px;
+      --font-sans:      'Segoe UI', system-ui, -apple-system, sans-serif;
+      --font-mono:      'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+    }
+
+    html { font-size: 16px; }
+
+    body {
+      font-family: var(--font-sans);
+      background: var(--clr-bg);
+      color: var(--clr-text);
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    a { color: var(--clr-accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── Nav ──────────────────────────────────────────────────── */
+    .nav {
+      background: var(--clr-surface);
+      border-bottom: 1px solid var(--clr-border);
+      padding: 0 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 56px;
+    }
+
+    .nav__brand {
+      font-family: var(--font-mono);
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--clr-accent);
+      letter-spacing: 0.04em;
+    }
+
+    .nav__links {
+      display: flex;
+      align-items: center;
+      gap: 1.25rem;
+      list-style: none;
+    }
+
+    .nav__links a {
+      font-size: 0.875rem;
+      color: var(--clr-muted);
+      transition: color 0.15s;
+    }
+
+    .nav__links a:hover { color: var(--clr-text); text-decoration: none; }
+
+    /* ── Main layout ──────────────────────────────────────────── */
+    .main {
+      flex: 1;
+      width: 100%;
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+    }
+
+    /* ── Flash messages ───────────────────────────────────────── */
+    .flash { margin-bottom: 1.25rem; }
+
+    .flash__item {
+      padding: 0.75rem 1rem;
+      border-radius: var(--radius);
+      border-left: 4px solid transparent;
+      font-size: 0.875rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .flash__item--info    { background: #1e2a45; border-color: var(--clr-accent); }
+    .flash__item--success { background: #142a1e; border-color: var(--clr-success); }
+    .flash__item--warning { background: #2a2010; border-color: var(--clr-warning); }
+    .flash__item--error   { background: #2a1212; border-color: var(--clr-danger); }
+
+    /* ── Card ─────────────────────────────────────────────────── */
+    .card {
+      background: var(--clr-surface);
+      border: 1px solid var(--clr-border);
+      border-radius: var(--radius);
+      padding: 1.5rem;
+    }
+
+    /* ── Form elements ────────────────────────────────────────── */
+    .form-group { display: flex; flex-direction: column; gap: 0.375rem; margin-bottom: 1rem; }
+
+    label {
+      font-size: 0.8125rem;
+      font-weight: 500;
+      color: var(--clr-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    select {
+      background: var(--clr-bg);
+      border: 1px solid var(--clr-border);
+      border-radius: var(--radius);
+      color: var(--clr-text);
+      font-family: var(--font-sans);
+      font-size: 0.9375rem;
+      padding: 0.5rem 0.75rem;
+      width: 100%;
+      transition: border-color 0.15s;
+      appearance: none;
+    }
+
+    input:focus, select:focus {
+      outline: none;
+      border-color: var(--clr-accent);
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+    }
+
+    select option { background: var(--clr-surface); }
+
+    /* ── Buttons ──────────────────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.375rem;
+      padding: 0.5rem 1rem;
+      border-radius: var(--radius);
+      font-family: var(--font-sans);
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: background 0.15s, opacity 0.15s;
+      text-decoration: none;
+      min-height: 36px;
+    }
+
+    .btn--primary {
+      background: var(--clr-accent);
+      color: #fff;
+    }
+    .btn--primary:hover { background: var(--clr-accent-dim); }
+
+    .btn--ghost {
+      background: transparent;
+      color: var(--clr-muted);
+      border: 1px solid var(--clr-border);
+    }
+    .btn--ghost:hover { color: var(--clr-text); border-color: var(--clr-muted); }
+
+    .btn--danger {
+      background: transparent;
+      color: var(--clr-danger);
+      border: 1px solid var(--clr-danger);
+      font-size: 0.8125rem;
+      padding: 0.25rem 0.625rem;
+      min-height: 28px;
+    }
+    .btn--danger:hover { background: rgba(239, 68, 68, 0.1); }
+
+    .btn:disabled, .htmx-request .btn { opacity: 0.6; cursor: not-allowed; }
+
+    /* ── Table ────────────────────────────────────────────────── */
+    .table-wrapper {
+      overflow-x: auto;
+      border: 1px solid var(--clr-border);
+      border-radius: var(--radius);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    thead { background: var(--clr-surface); }
+
+    th {
+      padding: 0.75rem 1rem;
+      text-align: left;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--clr-muted);
+      border-bottom: 1px solid var(--clr-border);
+    }
+
+    td {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--clr-border);
+      vertical-align: middle;
+    }
+
+    tbody tr:last-child td { border-bottom: none; }
+
+    tbody tr:hover { background: rgba(255, 255, 255, 0.025); }
+
+    /* ── Badge ────────────────────────────────────────────────── */
+    .badge {
+      display: inline-block;
+      padding: 0.1875rem 0.5rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      font-family: var(--font-mono);
+    }
+
+    .badge--owner  { background: rgba(245, 158, 11, 0.15); color: var(--clr-warning); }
+    .badge--admin  { background: rgba(99, 102, 241, 0.15); color: var(--clr-accent); }
+    .badge--member { background: rgba(34, 197, 94, 0.15);  color: var(--clr-success); }
+    .badge--viewer { background: rgba(139, 143, 168, 0.1); color: var(--clr-muted); }
+    .badge--active   { background: rgba(34, 197, 94, 0.15);  color: var(--clr-success); }
+    .badge--inactive { background: rgba(239, 68, 68, 0.12);  color: var(--clr-danger); }
+
+    /* ── Section headings ─────────────────────────────────────── */
+    h1 { font-size: 1.75rem; font-weight: 700; margin-bottom: 0.5rem; }
+    h2 { font-size: 1.25rem; font-weight: 600; margin-bottom: 0.75rem; }
+    h3 { font-size: 1rem;    font-weight: 600; margin-bottom: 0.5rem; }
+
+    .page-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .page-header__meta { color: var(--clr-muted); font-size: 0.9rem; margin-top: 0.2rem; }
+
+    /* ── Inline feedback ──────────────────────────────────────── */
+    .feedback { font-size: 0.875rem; margin-top: 0.75rem; }
+    .feedback--error   { color: var(--clr-danger); }
+    .feedback--success { color: var(--clr-success); }
+
+    /* ── Utility ──────────────────────────────────────────────── */
+    .mt-1  { margin-top: 0.25rem; }
+    .mt-2  { margin-top: 0.5rem;  }
+    .mt-4  { margin-top: 1rem;    }
+    .mt-6  { margin-top: 1.5rem;  }
+    .mb-4  { margin-bottom: 1rem; }
+    .mb-6  { margin-bottom: 1.5rem; }
+    .text-muted { color: var(--clr-muted); }
+    .text-sm    { font-size: 0.875rem; }
+    .text-center { text-align: center; }
+    .flex       { display: flex; }
+    .gap-2      { gap: 0.5rem; }
+    .gap-4      { gap: 1rem; }
+    .items-center { align-items: center; }
+    .flex-wrap  { flex-wrap: wrap; }
+
+    /* ── HTMX indicators ──────────────────────────────────────── */
+    .htmx-indicator { display: none; }
+    .htmx-request .htmx-indicator { display: inline; }
+
+    /* ── Footer ───────────────────────────────────────────────── */
+    .footer {
+      border-top: 1px solid var(--clr-border);
+      padding: 1rem 1.5rem;
+      text-align: center;
+      font-size: 0.8125rem;
+      color: var(--clr-muted);
+      font-family: var(--font-mono);
+    }
+
+    /* ── Responsive ───────────────────────────────────────────── */
+    @media (max-width: 600px) {
+      .nav { padding: 0 1rem; }
+      .main { padding: 1.25rem 1rem; }
+      .page-header { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body hx-headers='{"Authorization": "Bearer {{ token | default("") }}", "X-Tenant-Slug": "{{ tenant_slug | default("") }}"}'>
+
+  <!-- Navigation -->
+  <nav class="nav" role="navigation" aria-label="Main navigation">
+    <a class="nav__brand" href="/">fastapi-mt</a>
+    <ul class="nav__links">
+      {% if current_user %}
+        <li><a href="/users">Users</a></li>
+        <li>
+          <button class="btn btn--ghost"
+                  hx-post="/auth/logout"
+                  hx-target="body"
+                  hx-swap="outerHTML"
+                  style="padding: 0.25rem 0.75rem; font-size: 0.8125rem;">
+            Logout
+          </button>
+        </li>
+      {% else %}
+        <li><a href="/auth/login">Login</a></li>
+        <li><a href="/auth/register">Register</a></li>
+      {% endif %}
+    </ul>
+  </nav>
+
+  <!-- Flash messages -->
+  {% if messages %}
+  <div class="main" style="padding-bottom: 0;">
+    <div class="flash" role="alert" aria-live="polite">
+      {% for category, message in messages %}
+      <div class="flash__item flash__item--{{ category }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Page content -->
+  <main class="main" id="main-content">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="footer">
+    fastapi-multi-tenant &mdash; schema-per-tenant architecture
+  </footer>
+
+</body>
+</html>

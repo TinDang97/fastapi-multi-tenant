@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}Register &mdash; FastAPI Multi-Tenant{% endblock %}
+
+{% block content %}
+<div style="max-width: 400px; margin: 2rem auto;">
+  <div class="page-header" style="justify-content: center; margin-bottom: 1.5rem;">
+    <div class="text-center">
+      <h1 style="font-size: 1.5rem;">Create account</h1>
+      <p class="text-muted text-sm mt-1">Sign up for access to this tenant</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <form hx-post="/auth/register"
+          hx-ext="json-enc"
+          hx-target="#auth-result"
+          hx-swap="innerHTML"
+          hx-indicator="#register-indicator">
+
+      <div class="form-group">
+        <label for="email">Email address</label>
+        <input
+          type="email"
+          id="email"
+          name="email"
+          placeholder="you@example.com"
+          autocomplete="email"
+          required
+          aria-required="true">
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input
+          type="password"
+          id="password"
+          name="password"
+          placeholder="&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;"
+          autocomplete="new-password"
+          required
+          aria-required="true">
+      </div>
+
+      <button type="submit" class="btn btn--primary" style="width: 100%; margin-top: 0.5rem;">
+        <span class="htmx-indicator" id="register-indicator" aria-hidden="true">&#x23F3;</span>
+        Create account
+      </button>
+    </form>
+
+    <div id="auth-result" role="alert" aria-live="polite"></div>
+  </div>
+
+  <p class="text-center text-sm text-muted mt-4">
+    Already have an account?&nbsp;<a href="/auth/login">Sign in</a>
+  </p>
+</div>
+{% endblock %}

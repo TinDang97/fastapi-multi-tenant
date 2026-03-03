@@ -1,0 +1,48 @@
+# Application data
+data/*.db
+data/tenants/*.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Type checking
+.mypy_cache/
+
+# Linting
+.ruff_cache/
+
+# Testing & coverage
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+
+# Environment variables
+.env
+
+# macOS
+.DS_Store
+
+# Temporary files (commit messages, scratch work)
+tmp/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo

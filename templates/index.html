@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}FastAPI Multi-Tenant{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1>FastAPI Multi-Tenant</h1>
+    <p class="page-header__meta text-muted">Schema-per-tenant · Clean Architecture · HTMX</p>
+  </div>
+</div>
+
+{% if current_user %}
+  <!-- Authenticated state -->
+  <div class="card mb-6">
+    <div class="flex items-center gap-4" style="flex-wrap: wrap;">
+      <div>
+        <h2 style="margin-bottom: 0.2rem;">Welcome, {{ current_user.email }}</h2>
+        <span class="text-muted text-sm">
+          Role:&nbsp;
+          <span class="badge badge--{{ current_user.role | lower }}">{{ current_user.role }}</span>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="flex gap-4 flex-wrap">
+    <a href="/users" class="btn btn--primary">Manage Users</a>
+    <button class="btn btn--ghost"
+            hx-post="/auth/logout"
+            hx-target="body"
+            hx-swap="outerHTML">
+      Logout
+    </button>
+  </div>
+
+{% else %}
+  <!-- Unauthenticated state -->
+  <div class="card mb-6" style="max-width: 560px;">
+    <p style="margin-bottom: 1.25rem; color: var(--clr-muted); line-height: 1.7;">
+      A production-ready FastAPI boilerplate with isolated PostgreSQL schemas per tenant,
+      JWT authentication, role-based access control, and server-side rendering via HTMX.
+    </p>
+
+    <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.5rem;">
+      <li class="text-sm text-muted">&#x2713;&nbsp; Schema-per-tenant isolation</li>
+      <li class="text-sm text-muted">&#x2713;&nbsp; Role hierarchy: OWNER &gt; ADMIN &gt; MEMBER &gt; VIEWER</li>
+      <li class="text-sm text-muted">&#x2713;&nbsp; JWT bearer tokens, no session state</li>
+      <li class="text-sm text-muted">&#x2713;&nbsp; HTMX-powered partial updates, no SPA complexity</li>
+    </ul>
+
+    <div class="flex gap-2">
+      <a href="/auth/login" class="btn btn--primary">Login</a>
+      <a href="/auth/register" class="btn btn--ghost">Register</a>
+    </div>
+  </div>
+{% endif %}
+{% endblock %}

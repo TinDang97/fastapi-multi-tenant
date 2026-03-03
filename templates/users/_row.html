@@ -1,0 +1,25 @@
+<tr id="user-{{ user.id }}">
+  <td>{{ user.email }}</td>
+  <td>
+    <span class="badge badge--{{ user.role | lower }}">{{ user.role }}</span>
+  </td>
+  <td>
+    {% if user.is_active %}
+      <span class="badge badge--active">Active</span>
+    {% else %}
+      <span class="badge badge--inactive">Inactive</span>
+    {% endif %}
+  </td>
+  <td>
+    {% if current_user and current_user.role in ['ADMIN', 'OWNER'] and current_user.id != user.id %}
+    <button class="btn btn--danger"
+            hx-delete="/users/{{ user.id }}"
+            hx-target="#user-{{ user.id }}"
+            hx-swap="outerHTML"
+            hx-confirm="Delete {{ user.email }}? This action cannot be undone."
+            hx-headers='{"Authorization": "Bearer {{ token | default("") }}"}'>
+      Delete
+    </button>
+    {% endif %}
+  </td>
+</tr>

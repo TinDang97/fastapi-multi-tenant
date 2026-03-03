@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Login &mdash; FastAPI Multi-Tenant{% endblock %}
+
+{% block content %}
+<div style="max-width: 400px; margin: 2rem auto;">
+  <div class="page-header" style="justify-content: center; margin-bottom: 1.5rem;">
+    <div class="text-center">
+      <h1 style="font-size: 1.5rem;">Sign in</h1>
+      <p class="text-muted text-sm mt-1">Enter your credentials to continue</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <form hx-post="/auth/login"
+          hx-ext="json-enc"
+          hx-target="#auth-result"
+          hx-swap="innerHTML"
+          hx-indicator="#login-indicator">
+
+      <div class="form-group">
+        <label for="email">Email address</label>
+        <input
+          type="email"
+          id="email"
+          name="email"
+          placeholder="you@example.com"
+          autocomplete="email"
+          required
+          aria-required="true">
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input
+          type="password"
+          id="password"
+          name="password"
+          placeholder="&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;&#x2022;"
+          autocomplete="current-password"
+          required
+          aria-required="true">
+      </div>
+
+      <button type="submit" class="btn btn--primary" style="width: 100%; margin-top: 0.5rem;">
+        <span class="htmx-indicator" id="login-indicator" aria-hidden="true">&#x23F3;</span>
+        Sign in
+      </button>
+    </form>
+
+    <!-- HTMX response target: error message or success redirect trigger -->
+    <div id="auth-result" role="alert" aria-live="polite"></div>
+  </div>
+
+  <p class="text-center text-sm text-muted mt-4">
+    No account?&nbsp;<a href="/auth/register">Create one</a>
+  </p>
+</div>
+{% endblock %}
