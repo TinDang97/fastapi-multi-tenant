@@ -408,4 +408,4 @@ All protected routes read the JWT from the `access_token` cookie (set by the log
 
 ## License
 
-MIT
+[LICENCE](LICENCE.md)
